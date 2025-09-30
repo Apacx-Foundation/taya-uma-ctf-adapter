@@ -1,7 +1,7 @@
 # folders
 node_modules/
 lib
-broadcast/
+# broadcast/ keep for deployments
 
 *.log
 *.tgz
