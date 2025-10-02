@@ -1,0 +1,71 @@
+name: Foundry pipeline
+
+on:
+  pull_request:
+    branches:
+      - develop
+  push:
+    branches:
+      - develop
+
+env:
+  NO_COLOR: 1
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      # - name: Get changed files
+      #   id: changed-files
+      #   uses: tj-actions/changed-files@v47
+      #   with:
+      #     files: '**/*.sol'
+
+      - name: Format check
+        id: format-check
+        # run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} >> $GITHUB_STEP_SUMMARY
+        run: forge fmt --check >> $GITHUB_STEP_SUMMARY
+
+      - name: Lint
+        id: lint
+        run: |-
+          forge lint \
+            --severity high \
+            --severity gas >> $GITHUB_STEP_SUMMARY
+
+      - name: Test
+        id: test
+        run: forge test -vvv >> $GITHUB_STEP_SUMMARY
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: foundry
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      # - name: Deploy
+      #   id: deploy
+      #   shell: bash
+      #   run: |-
+      #     bash deploy/scripts/deploy_adapter.sh
+      #   env:
+      #     PK: ${{ secrets.PK }}
+      #     RPC_URL: ${{ secrets.RPC_URL }}
+      #     ADMIN: ${{ secrets.ADMIN }}
+      #     CTF: ${{ secrets.CTF }}
+      #     FINDER: ${{ secrets.FINDER }}
+      #     OPTIMISTIC_ORACLE: ${{ secrets.OPTIMISTIC_ORACLE }}
