@@ -20,8 +20,6 @@ jobs:
           submodules: recursive
 
       - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       # - name: Get changed files
       #   id: changed-files
@@ -32,18 +30,18 @@ jobs:
       - name: Format check
         id: format-check
         # run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} >> $GITHUB_STEP_SUMMARY
-        run: forge fmt --check >> $GITHUB_STEP_SUMMARY
+        run: forge fmt --check
 
       - name: Lint
         id: lint
         run: |-
           forge lint \
             --severity high \
-            --severity gas >> $GITHUB_STEP_SUMMARY
+            --severity gas
 
       - name: Test
         id: test
-        run: forge test -vvv >> $GITHUB_STEP_SUMMARY
+        run: forge test -vvv
 
   deploy:
     runs-on: ubuntu-latest
@@ -54,8 +52,6 @@ jobs:
           submodules: recursive
 
       - uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
 
       # - name: Deploy
       #   id: deploy
