@@ -11,6 +11,15 @@ on:
 env:
   NO_COLOR: 1
 
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -27,41 +36,70 @@ jobs:
       #   with:
       #     files: '**/*.sol'
 
-      - name: Format check
-        id: format-check
+      - name: Format
+        id: fmt
         # run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} >> $GITHUB_STEP_SUMMARY
+        continue-on-error: true
         run: forge fmt --check
 
       - name: Lint
         id: lint
-        run: |-
-          forge lint \
-            --severity high \
-            --severity gas
+        run: forge lint --severity=high --severity=gas
 
       - name: Test
         id: test
+        continue-on-error: true
         run: forge test -vvv
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: ci
-    steps:
-      - uses: actions/checkout@v5
+      - uses: actions/github-script@v8
+        if: github.event_name == 'pull_request'
+        env:
+          FMT: ${{ steps.fmt.outputs.stdout }}
+          LINT: ${{ steps.lint.outputs.stdout }}
+          TEST: ${{ steps.test.outputs.stdout }}
         with:
-          submodules: recursive
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Prepare format of the comment
+            const run_url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID
+            const run_link = '<a href="' + run_url + '">Actions</a>.'
+            const output = `# Foundry CI 📍\`${process.env.GITHUB_REPOSITORY}\`
+            #### Format and Style 🎨\`${{ steps.fmt.outcome }}\`
+            <details><summary>Format and Style Output</summary>
 
-      - uses: foundry-rs/foundry-toolchain@v1
+            \`\`\`\n
+            ${process.env.FMT}
+            \`\`\`
 
-      # - name: Deploy
-      #   id: deploy
-      #   shell: bash
-      #   run: |-
-      #     bash deploy/scripts/deploy_adapter.sh
-      #   env:
-      #     PK: ${{ secrets.PK }}
-      #     RPC_URL: ${{ secrets.RPC_URL }}
-      #     ADMIN: ${{ secrets.ADMIN }}
-      #     CTF: ${{ secrets.CTF }}
-      #     FINDER: ${{ secrets.FINDER }}
-      #     OPTIMISTIC_ORACLE: ${{ secrets.OPTIMISTIC_ORACLE }}
+            </details>
+
+            #### Lint 🧹\`${{ steps.lint.outputs.stdout != '' && 'failure' || 'passed' }}\`
+            <details><summary>Lint Output</summary>
+
+            \`\`\`\n
+            ${process.env.LINT}
+            \`\`\`
+
+            </details>
+
+            #### Test 🧪\`${{ steps.test.outcome }}\`
+            <details><summary>Test Output</summary>
+
+            \`\`\`\n
+            ${process.env.TEST}
+            \`\`\`
+
+            </details>
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            // Create a comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Fail the ci if any step fails
+        if: failure() || steps.lint.outputs.stdout != ''
+        run: exit 1
