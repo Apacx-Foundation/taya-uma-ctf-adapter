@@ -1,4 +1,4 @@
-name: Foundry pipeline
+name: foundry
 
 on:
   pull_request:
@@ -40,16 +40,22 @@ jobs:
         id: fmt
         # run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} >> $GITHUB_STEP_SUMMARY
         continue-on-error: true
-        run: forge fmt --check
+        run: |-
+          forge fmt --check 2>&1 | tee fmt.log
+          echo stdout=$(cat fmt.log) >> $GITHUB_OUTPUT
 
       - name: Lint
         id: lint
-        run: forge lint --severity=high --severity=gas
+        run: |-
+          forge lint --severity=high --severity=gas 2>&1 | tee lint.log
+          echo stdout=$(cat lint.log) >> $GITHUB_OUTPUT
 
       - name: Test
         id: test
         continue-on-error: true
-        run: forge test -vvv
+        run: |-
+          forge test -vvv 2>&1 | tee test.log
+          echo stdout=$(cat test.log) >> $GITHUB_OUTPUT
 
       - uses: actions/github-script@v8
         if: github.event_name == 'pull_request'
@@ -73,7 +79,7 @@ jobs:
 
             </details>
 
-            #### Lint 🧹\`${{ steps.lint.outputs.stdout != '' && 'failure' || 'passed' }}\`
+            #### Lint 🧹\`${{ steps.lint.outputs.stdout != '' && 'failure' || 'success' }}\`
             <details><summary>Lint Output</summary>
 
             \`\`\`\n
