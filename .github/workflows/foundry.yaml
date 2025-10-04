@@ -73,7 +73,7 @@ jobs:
 
             </details>
 
-            #### Lint 🧹\`${{ steps.lint.outputs.stdout != '' && 'failure' || 'success' }}\`
+            #### Lint 🧹\`${lint_file != '' ? 'failure' : 'success'}\`
             <details><summary>Lint Output</summary>
 
             \`\`\`\n
