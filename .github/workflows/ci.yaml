@@ -125,6 +125,6 @@ jobs:
         run: |-
           lint_file=$(cat lint.log 2>/dev/null || :)
           if [[ "${{ steps.fmt.outcome }}" == "failure" || "${lint_file}" != "" || "${{ steps.test.outcome }}" == "failure" ]]; then
-            echo "One of the foundry checks failed, please check the Foundry CI output for details."
+            echo "One of the checks failed, please check the CI output for details."
             exit 1
           fi
