@@ -30,21 +30,22 @@ jobs:
 
       - uses: foundry-rs/foundry-toolchain@v1
 
-      # - name: Get changed files
-      #   id: changed-files
-      #   uses: tj-actions/changed-files@v47
-      #   with:
-      #     files: '**/*.sol'
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: '**/*.sol'
 
       - name: Format
         id: fmt
-        # run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} >> $GITHUB_STEP_SUMMARY
+        if: steps.changed-files.outputs.all_changed_files != ''
         continue-on-error: true
-        run: forge fmt --check 2>&1 | tee fmt.log
+        run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} 2>&1 | tee fmt.log
 
       - name: Lint
         id: lint
-        run: forge lint --severity=high --severity=gas 2>&1 | tee lint.log
+        if: steps.changed-files.outputs.all_changed_files != ''
+        run: forge lint --severity=high --severity=gas ${{ steps.changed-files.outputs.all_changed_files }} 2>&1 | tee lint.log
 
       - name: Test
         id: test
@@ -71,8 +72,8 @@ jobs:
             const run_url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID
             const run_link = '<a href="' + run_url + '">Actions</a>.'
             const fs = require('fs')
-            const fmt_file = fs.readFileSync(`fmt.log`, 'utf8')
-            const lint_file = fs.readFileSync(`lint.log`, 'utf8')
+            const fmt_file = '${{ steps.fmt.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping format check.' : fs.readFileSync(`fmt.log`, 'utf8')
+            const lint_file = '${{ steps.lint.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping lint check.' : fs.readFileSync(`lint.log`, 'utf8')
             const test_file = fs.readFileSync(`test.log`, 'utf8')
             const output = `# Foundry CI 📍\`${process.env.GITHUB_REPOSITORY}\`
             #### Format and Style 🎨\`${{ steps.fmt.outcome }}\`
@@ -123,7 +124,7 @@ jobs:
 
       - name: Fail the ci if any step fails
         run: |-
-          lint_file=$(cat lint.log)
+          lint_file=$(cat lint.log 2>/dev/null || :)
           if [[ "${{ steps.fmt.outcome }}" == "failure" || "${lint_file}" != "" || "${{ steps.test.outcome }}" == "failure" ]]; then
             echo "One of the foundry checks failed, please check the Foundry CI output for details."
             exit 1
