@@ -124,7 +124,14 @@ jobs:
       - name: Fail the ci if any step fails
         run: |-
           lint_file=$(cat lint.log 2>/dev/null || :)
-          if [[ "${{ steps.fmt.outcome }}" == "failure" || "${lint_file}" != "" || "${{ steps.test.outcome }}" == "failure" ]]; then
-            echo "One of the checks failed, please check the CI output for details."
+          if [[ "${{ steps.fmt.outcome }}" == "failure" \
+            || "${lint_file}" != "" \
+            || "${{ steps.test.outcome }}" == "failure" ]];
+          then
+            echo "❌ One or more checks failed:"
+            [[ "${{ steps.fmt.outcome }}" == "failure" ]] && echo "  - Format"
+            [[ "${lint_file}" != "" ]] && echo "  - Lint"
+            [[ "${{ steps.test.outcome }}" == "failure" ]] && echo "  - Test"
             exit 1
           fi
+          echo "✅ All checks passed successfully!"
