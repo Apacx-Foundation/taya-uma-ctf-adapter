@@ -1,4 +1,4 @@
-name: Foundry CI
+name: foundry
 
 on:
   pull_request:
@@ -125,6 +125,6 @@ jobs:
         run: |-
           lint_file=$(cat lint.log)
           if [[ "${{ steps.fmt.outcome }}" == "failure" || "${lint_file}" != "" || "${{ steps.test.outcome }}" == "failure" ]]; then
-            echo "Lint failed"
+            echo "One of the foundry checks failed, please check the Foundry CI output for details."
             exit 1
           fi
