@@ -63,7 +63,7 @@ jobs:
               issue_number: context.issue.number,
             })
             const botComment = comments.find(comment => {
-              return comment.user.id === 41898282 && comment.body.includes(`# Configuration 📍\`${process.env.WORKING_DIR}\``)
+              return comment.user.id === 41898282 && comment.body.includes(`# Foundry CI 📍\`${process.env.GITHUB_REPOSITORY}\``)
             })
 
 
