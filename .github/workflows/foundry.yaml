@@ -8,8 +8,8 @@ on:
     branches:
       - develop
 
-env:
-  NO_COLOR: 1
+# env:
+#   NO_COLOR: 1
 
 defaults:
   run:
