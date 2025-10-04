@@ -63,7 +63,7 @@ jobs:
               issue_number: context.issue.number,
             })
             const botComment = comments.find(comment => {
-              return comment.user.id === 41898282 && comment.body.includes(`# Foundry CI 📍\`${process.env.GITHUB_REPOSITORY}\``)
+              return comment.user.id === 41898282 && comment.body.includes(`# CI 📍\`${process.env.GITHUB_REPOSITORY}\``)
             })
 
 
@@ -74,7 +74,7 @@ jobs:
             const fmt_file = '${{ steps.fmt.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping format check.' : fs.readFileSync(`fmt.log`, 'utf8')
             const lint_file = '${{ steps.lint.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping lint check.' : fs.readFileSync(`lint.log`, 'utf8')
             const test_file = fs.readFileSync(`test.log`, 'utf8')
-            const output = `# Foundry CI 📍\`${process.env.GITHUB_REPOSITORY}\`
+            const output = `# CI 📍\`${process.env.GITHUB_REPOSITORY}\`
             #### Format and Style 🎨\`${{ steps.fmt.outcome }}\`
             <details><summary>Format and Style Output</summary>
 
