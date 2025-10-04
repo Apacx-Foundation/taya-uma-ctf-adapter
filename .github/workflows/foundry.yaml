@@ -85,7 +85,7 @@ jobs:
 
             </details>
 
-            #### Lint 🧹\`${'${{ steps.lint.outcome }}' == 'skipped' ? 'skipped' : '${lint_file != '' ? 'failure' : 'success'}}\`
+            #### Lint 🧹\`${'${{ steps.lint.outcome }}' == 'skipped' ? 'skipped' : lint_file != '' ? 'failure' : 'success'}\`
             <details><summary>Lint Output</summary>
 
             \`\`\`\n
