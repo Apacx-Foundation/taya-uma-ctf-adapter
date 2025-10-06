@@ -1,0 +1,137 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - main
+
+env:
+  NO_COLOR: 1
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: '**/*.sol'
+
+      - name: Format
+        id: fmt
+        if: steps.changed-files.outputs.all_changed_files != ''
+        continue-on-error: true
+        run: forge fmt --check ${{ steps.changed-files.outputs.all_changed_files }} 2>&1 | tee fmt.log
+
+      - name: Lint
+        id: lint
+        if: steps.changed-files.outputs.all_changed_files != ''
+        run: forge lint --severity=high --severity=gas ${{ steps.changed-files.outputs.all_changed_files }} 2>&1 | tee lint.log
+
+      - name: Test
+        id: test
+        continue-on-error: true
+        run: forge test -vvv 2>&1 | tee test.log
+
+      - uses: actions/github-script@v8
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // 1. Retrieve existing bot comments for the PR
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const botComment = comments.find(comment => {
+              return comment.user.id === 41898282 && comment.body.includes(`# CI 📍\`${process.env.GITHUB_REPOSITORY}\``)
+            })
+
+
+            // 2. Prepare format of the comment
+            const run_url = process.env.GITHUB_SERVER_URL + '/' + process.env.GITHUB_REPOSITORY + '/actions/runs/' + process.env.GITHUB_RUN_ID
+            const run_link = '<a href="' + run_url + '">Actions</a>.'
+            const fs = require('fs')
+            const fmt_file = '${{ steps.fmt.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping format check.' : fs.readFileSync(`fmt.log`, 'utf8')
+            const lint_file = '${{ steps.lint.outcome }}' == 'skipped' ? 'No solidity code changes found, skipping lint check.' : fs.readFileSync(`lint.log`, 'utf8')
+            const test_file = fs.readFileSync(`test.log`, 'utf8')
+            const output = `# CI 📍\`${process.env.GITHUB_REPOSITORY}\`
+            #### Format and Style 🎨\`${{ steps.fmt.outcome }}\`
+            <details><summary>Format and Style Output</summary>
+
+            \`\`\`\n
+            ${fmt_file}
+            \`\`\`
+
+            </details>
+
+            #### Lint 🧹\`${'${{ steps.lint.outcome }}' == 'skipped' ? 'skipped' : lint_file != '' ? 'failure' : 'success'}\`
+            <details><summary>Lint Output</summary>
+
+            \`\`\`\n
+            ${lint_file}
+            \`\`\`
+
+            </details>
+
+            #### Test 🧪\`${{ steps.test.outcome }}\`
+            <details><summary>Test Output</summary>
+
+            \`\`\`\n
+            ${test_file}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            // 3. If we have a comment, update it, otherwise create a new one
+            if (botComment) {
+              github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: output
+              })
+            } else {
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: output
+              })
+            }
+
+      - name: Fail the ci if any step fails
+        run: |-
+          lint_file=$(cat lint.log 2>/dev/null || :)
+          if [[ "${{ steps.fmt.outcome }}" == "failure" \
+            || "${lint_file}" != "" \
+            || "${{ steps.test.outcome }}" == "failure" ]];
+          then
+            echo "❌ One or more checks failed:"
+            [[ "${{ steps.fmt.outcome }}" == "failure" ]] && echo "  - Format"
+            [[ "${lint_file}" != "" ]] && echo "  - Lint"
+            [[ "${{ steps.test.outcome }}" == "failure" ]] && echo "  - Test"
+            exit 1
+          fi
+          echo "✅ All checks passed successfully!"
